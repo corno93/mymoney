@@ -1,0 +1,19 @@
+*{
+    /*color: red;*/
+
+}
+
+
+td{
+    width: 70px;
+    height: 70px;
+    text-align: center;
+}
+
+.red{
+    color: red;
+}
+
+.green{
+    color: green;
+}
