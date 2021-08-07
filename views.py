@@ -15,7 +15,7 @@ async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-@router.post("/upload", response_class=HTMLResponse)
+@router.post("/calendar", response_class=HTMLResponse)
 async def upload(request: Request, file: UploadFile = File(...)):
 
     # save file to dir, validate
