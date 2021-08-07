@@ -1,9 +1,9 @@
-from io import StringIO
-
 import pandas as pd
 from fastapi import APIRouter, File, Request, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
+from starlette.status import HTTP_302_FOUND
 
+from constants import DATA_FILE
 from spend_calendar import SpendCalendar
 from templates import templates
 
@@ -15,13 +15,19 @@ async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-@router.post("/calendar", response_class=HTMLResponse)
-async def upload(request: Request, file: UploadFile = File(...)):
+async def handle_save(data):
+    """Save the file's contents to the data/data.csv"""
 
-    # save file to dir, validate
-    data = await file.read()
+    # write all contents to file
+    f1 = open(DATA_FILE, "a+")
+    f1.write(data.decode("utf-8"))
+    f1.close()
+
+
+@router.get("/calendar/year/{year}/month/{month}", response_class=HTMLResponse)
+async def calendar(request: Request, year: int, month: int):
     df = pd.read_csv(
-        StringIO(data.decode("utf-8")),
+        DATA_FILE,
         header=None,
         delimiter=",",
         usecols=[0, 1, 2],
@@ -29,15 +35,26 @@ async def upload(request: Request, file: UploadFile = File(...)):
         parse_dates=["date"],
         dayfirst=True,
     )
-
-    # pd
     daily_amount_sum = df.resample("D", on="date").amount.sum()
-    cal = SpendCalendar(daily_amount_sum, 7, 2021)
-
-    # pick first month year
-    # first_year_month = (2021, 7)
-    html_calendar = cal.formatmonth(2021, 7)
+    cal = SpendCalendar(daily_amount_sum, year, month)
+    html_calendar = cal.formatmonth(year, month)
 
     return templates.TemplateResponse(
         "index.html", {"request": request, "calendar": html_calendar}
+    )
+
+
+@router.post("/upload", response_class=RedirectResponse)
+async def upload(request: Request, file: UploadFile = File(...)):
+
+    data = await file.read()
+    await handle_save(data)
+
+    # sample the data to get a month and year
+    _, month, year = data.decode("utf-8")[:20].split(",")[0].split("/")
+    # remove trailing '0' (not great but it'll do)
+    if "0" in month and month != "10":
+        month = month[1:]
+    return RedirectResponse(
+        url=f"/calendar/year/{year}/month/{month}", status_code=HTTP_302_FOUND
     )
