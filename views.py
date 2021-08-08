@@ -15,7 +15,7 @@ async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-async def handle_save(data):
+def handle_save(data):
     """Save the file's contents to the data/data.csv"""
 
     # write all contents to file
@@ -36,8 +36,8 @@ async def calendar(request: Request, year: int, month: int):
         dayfirst=True,
     )
     daily_amount_sum = df.resample("D", on="date").amount.sum()
-    cal = SpendCalendar(daily_amount_sum, year, month)
-    html_calendar = cal.formatmonth(year, month)
+    calendar = SpendCalendar(daily_amount_sum, year, month)
+    html_calendar = calendar.formatmonth()
 
     return templates.TemplateResponse(
         "index.html", {"request": request, "calendar": html_calendar}
@@ -48,13 +48,15 @@ async def calendar(request: Request, year: int, month: int):
 async def upload(request: Request, file: UploadFile = File(...)):
 
     data = await file.read()
-    await handle_save(data)
+    handle_save(data)
 
     # sample the data to get a month and year
-    _, month, year = data.decode("utf-8")[:20].split(",")[0].split("/")
+    _, month, year = data.decode("utf-8")[:15].split(",")[0].split("/")
+
     # remove trailing '0' (not great but it'll do)
     if "0" in month and month != "10":
         month = month[1:]
+
     return RedirectResponse(
         url=f"/calendar/year/{year}/month/{month}", status_code=HTTP_302_FOUND
     )
