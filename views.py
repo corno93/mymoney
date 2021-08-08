@@ -3,7 +3,7 @@ from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.status import HTTP_302_FOUND
 
-from constants import DATA_FILE
+from constants import ACC_COL_DELIMITER, DAILY_TRANSACTIONS_DELIMITER, DATA_FILE
 from spend_calendar import SpendCalendar
 from templates import templates
 
@@ -35,8 +35,22 @@ async def calendar(request: Request, year: int, month: int):
         parse_dates=["date"],
         dayfirst=True,
     )
-    daily_amount_sum = df.resample("D", on="date").amount.sum()
-    calendar = SpendCalendar(daily_amount_sum, year, month)
+    # make another column that concatenates description and amount
+    df["acc"] = df["description"] + ACC_COL_DELIMITER + df["amount"].astype(str)
+
+    # group all data by day
+    data_groupby_day = df.resample("D", on="date")
+
+    # get each day's sum
+    daily_amount_sum = data_groupby_day.amount.sum()
+
+    # for each day, join all of the new columns data
+    daily_transactions = data_groupby_day.acc.agg(
+        lambda x: DAILY_TRANSACTIONS_DELIMITER.join(x)
+    )
+
+    # formatting daily_amount_sum, daily_transactions allows us to access it as a dict in SpendCalendar
+    calendar = SpendCalendar(daily_amount_sum, daily_transactions, year, month)
     html_calendar = calendar.formatmonth()
 
     return templates.TemplateResponse(

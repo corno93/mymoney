@@ -1,15 +1,24 @@
 from calendar import HTMLCalendar
 
+from constants import ACC_COL_DELIMITER, DAILY_TRANSACTIONS_DELIMITER
+
 
 class SpendCalendar(HTMLCalendar):
     """Subclasses HTMLCalendar to inject more information:
     - daily total spend
-    - prev, next month buttons"""
+    - prev, next month buttons
+    - transaction description and amount
+    """
 
-    def __init__(self, daily_amount_sum, year, month, *args, **kwargs):
+    def __init__(
+        self, daily_amount_sum, daily_transactions, year, month, *args, **kwargs
+    ):
         self.daily_amount_sum = daily_amount_sum
+        self.daily_transactions = daily_transactions
         self.year = year
         self.month = month
+
+        # TODO: validate that data exists for month here and handle response
 
         super().__init__(*args, **kwargs)
 
@@ -19,17 +28,43 @@ class SpendCalendar(HTMLCalendar):
 
         if day != 0:
 
-            try:
-                daily_amount = self.daily_amount_sum[f"{self.year}-{self.month}-{day}"]
-            except KeyError:
-                daily_amount = 0
+            daily_amount = self.daily_amount_sum[
+                f"{self.year}-{self.month}-{day}"
+            ].round(decimals=2)
+            daily_transactions = self.daily_transactions[
+                f"{self.year}-{self.month}-{day}"
+            ]
 
-            # inject new data
-            div_class = "green" if daily_amount > 0 else "red"
-            amount_div = f'<div class="{div_class}">{str(daily_amount)}</div>'
-            day_html = f"{day_html[:-5]}{amount_div}</td>"
+            if daily_amount:
+                transactions_tooltip = self.create_transactions_tooltip(
+                    daily_transactions
+                )
+            else:
+                daily_amount = 0
+                transactions_tooltip = "You have not spent anything today"
+
+            amount_span = self.create_span_with_red_or_green_text(daily_amount)
+            transactions_div = (
+                f'<div class="transactions-tooltip">{transactions_tooltip}</div>'
+            )
+
+            # remove the old '</td>' and add the new content
+            day_html = f"{day_html[:-5]}{amount_span}{transactions_div}</td>"
 
         return day_html
+
+    def create_span_with_red_or_green_text(self, amount):
+        css_class = "green" if int(amount) > 0 else "red"
+        return f'<div><span class="{css_class}">{str(amount)}</span></div>'
+
+    def create_transactions_tooltip(self, daily_transactions):
+        html = "<ul>"
+        for transaction in daily_transactions.split(DAILY_TRANSACTIONS_DELIMITER):
+            description, amount = transaction.split(ACC_COL_DELIMITER)
+            amount_span = self.create_span_with_red_or_green_text(float(amount))
+            html += f"<li>{description}<span class='transaction-amount'>{amount_span}</span></li>"
+        html += "</ul>"
+        return html
 
     def formatmonth(self):
         calendar_html = super(SpendCalendar, self).formatmonth(self.year, self.month)
@@ -38,8 +73,8 @@ class SpendCalendar(HTMLCalendar):
 
         buttons_container = f"""
         <div class=buttons>
-            {next_month}
             {prev_month}
+            {next_month}
         </div>"""
 
         return buttons_container + calendar_html

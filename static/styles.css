@@ -12,3 +12,15 @@ td{
 .green{
     color: green;
 }
+
+.transactions-tooltip{
+    display: None;
+    position: absolute;
+    width: 300px;
+    background-color: rgba(245,245,245,0.75);
+}
+
+td:hover .transactions-tooltip{
+    display: block;
+
+}
