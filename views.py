@@ -26,6 +26,8 @@ def handle_save(data):
 
 @router.get("/calendar/year/{year}/month/{month}", response_class=HTMLResponse)
 async def calendar(request: Request, year: int, month: int):
+
+    # cache this?
     df = pd.read_csv(
         DATA_FILE,
         header=None,
@@ -34,23 +36,39 @@ async def calendar(request: Request, year: int, month: int):
         names=["date", "amount", "description"],
         parse_dates=["date"],
         dayfirst=True,
+        index_col="date",
     )
-    # make another column that concatenates description and amount
-    df["acc"] = df["description"] + ACC_COL_DELIMITER + df["amount"].astype(str)
+    # FIXME: FutureWarning: Value based partial slicing on non-monotonic DatetimeIndexes
+    #  with non-existing keys is deprecated and will raise a KeyError in a future Version.
+    df = df.loc[f"{year}-{month}-01":f"{year}-{month + 1}-01"]
 
-    # group all data by day
-    data_groupby_day = df.resample("D", on="date")
+    if not df.empty:
 
-    # get each day's sum
-    daily_amount_sum = data_groupby_day.amount.sum()
+        # make another column that concatenates description and amount
+        df["acc"] = df["description"] + ACC_COL_DELIMITER + df["amount"].astype(str)
 
-    # for each day, join all of the new columns data
-    daily_transactions = data_groupby_day.acc.agg(
-        lambda x: DAILY_TRANSACTIONS_DELIMITER.join(x)
-    )
+        # group all data by day
+        data_groupby_day = df.resample("D")
 
-    # formatting daily_amount_sum, daily_transactions allows us to access it as a dict in SpendCalendar
-    calendar = SpendCalendar(daily_amount_sum, daily_transactions, year, month)
+        # get each day's sum and add another column for normalized amount (for cell colouring)
+        daily_amount_sum = data_groupby_day.amount.sum()
+        normalized_daily_amount_sum = daily_amount_sum.apply(
+            lambda x: -(x / daily_amount_sum.min())
+            if x < 0
+            else x / daily_amount_sum.max()
+        )
+
+        # for each day, join all of the new columns data
+        daily_transactions = data_groupby_day.acc.agg(
+            lambda x: DAILY_TRANSACTIONS_DELIMITER.join(x)
+        )
+
+        df = pd.concat(
+            [daily_amount_sum, daily_transactions, normalized_daily_amount_sum], axis=1
+        )
+        df.columns = ["amount", "transactions", "normalized_amount"]
+
+    calendar = SpendCalendar(df, year, month)
     html_calendar = calendar.formatmonth()
 
     return templates.TemplateResponse(
