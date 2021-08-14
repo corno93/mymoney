@@ -1,3 +1,6 @@
+from functools import wraps, lru_cache
+from timeit import default_timer
+
 import pandas as pd
 from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -6,6 +9,7 @@ from starlette.status import HTTP_302_FOUND
 from constants import ACC_COL_DELIMITER, DAILY_TRANSACTIONS_DELIMITER, DATA_FILE
 from spend_calendar import SpendCalendar
 from templates import templates
+from typing import Optional
 
 router = APIRouter()
 
@@ -24,11 +28,9 @@ def handle_save(data):
     f1.close()
 
 
-@router.get("/calendar/year/{year}/month/{month}", response_class=HTMLResponse)
-async def calendar(request: Request, year: int, month: int):
-
-    # cache this?
-    df = pd.read_csv(
+@lru_cache()
+def get_data():
+    return pd.read_csv(
         DATA_FILE,
         header=None,
         delimiter=",",
@@ -77,10 +79,12 @@ async def calendar(request: Request, year: int, month: int):
 
 
 @router.post("/upload", response_class=RedirectResponse)
-async def upload(request: Request, file: UploadFile = File(...)):
+async def upload(request: Request, file: UploadFile = File(...), redirect: Optional[str] = None):
 
     data = await file.read()
     handle_save(data)
+
+    get_data.cache_clear()
 
     # sample the data to get a month and year
     _, month, year = data.decode("utf-8")[:15].split(",")[0].split("/")
