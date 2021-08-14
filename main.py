@@ -16,10 +16,11 @@ app.include_router(router)
 
 @app.on_event("startup")
 def startup_event():
+    # this event should be blocking as we need the DATA_FILE to exist before anything can happen
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
     if not os.path.exists(DATA_FILE):
-        open("data.csv", "w").close()
+        open(DATA_FILE, "w").close()
 
 
 if __name__ == "__main__":

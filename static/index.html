@@ -7,17 +7,16 @@
   }
 
   function get_action(){
-      let upload_url = "/upload"
-      const pathname = window.location.pathname.split("/")
+      let upload_url = "/upload";
+      const pathname = window.location.pathname.split("/");
 
-      // try and append a redirect_url query param. Doing this allows the user
-      // the remain on the calendar year and month even if they submitted more data
-      try{
-          const month = pathname[pathname.length-1]
-          const year = pathname[pathname.length-3]
-          const redirect_url=`/calendar/year/${year}/month/${month}`
-          upload_url =  `${upload_url}?redirect=${redirect_url}`
-      }catch (err){
+      // if the url is of the form `/calendar/year/{year}/month/{month}` extract the year and
+      // month so when a user is submitting data they remain on the same year and month
+      if (pathname.length === 6 && window.location.pathname.includes('calendar')) {
+        const month = pathname[pathname.length-1];
+        const year = pathname[pathname.length-3];
+        const redirect_url=`/calendar/year/${year}/month/${month}`;
+        upload_url =  `${upload_url}?redirect=${redirect_url}`;
       }
       return upload_url;
   }

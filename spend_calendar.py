@@ -1,5 +1,7 @@
 from calendar import HTMLCalendar
+from datetime import datetime
 
+from dateutil.relativedelta import relativedelta
 from pandas import DataFrame
 
 from constants import ACC_COL_DELIMITER, DAILY_TRANSACTIONS_DELIMITER
@@ -84,25 +86,17 @@ class SpendCalendar(HTMLCalendar):
         return buttons_container + calendar_html
 
     def next_month_button(self):
-        if self.month == 12:
-            next_month = 1
-            year = self.year + 1
-        else:
-            next_month = self.month + 1
-            year = self.year
-
-        url = f"/calendar/year/{year}/month/{next_month}"
+        next = datetime(year=self.year, month=self.month, day=1) + relativedelta(
+            months=1
+        )
+        url = f"/calendar/year/{next.year}/month/{next.month}"
         return self.create_button(url, "Next month")
 
     def previous_month_button(self):
-        if self.month == 1:
-            prev_month = 12
-            year = self.year - 1
-        else:
-            prev_month = self.month - 1
-            year = self.year
-
-        url = f"/calendar/year/{year}/month/{prev_month}"
+        previous = datetime(year=self.year, month=self.month, day=1) - relativedelta(
+            months=1
+        )
+        url = f"/calendar/year/{previous.year}/month/{previous.month}"
         return self.create_button(url, "Previous month")
 
     def create_button(self, url, name):

@@ -1,7 +1,10 @@
+from datetime import datetime
 from functools import lru_cache
 from typing import Optional
 
+import aiofiles
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.status import HTTP_302_FOUND
@@ -18,13 +21,9 @@ async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-def handle_save(data):
-    """Save the file's contents to the data/data.csv"""
-
-    # write all contents to file
-    f1 = open(DATA_FILE, "a+")
-    f1.write(data.decode("utf-8"))
-    f1.close()
+async def save_data(data):
+    async with aiofiles.open(DATA_FILE, "a") as f:
+        await f.write(data.decode("utf-8"))
 
 
 @lru_cache()
@@ -48,29 +47,37 @@ async def calendar(request: Request, year: int, month: int):
 
     # FIXME: FutureWarning: Value based partial slicing on non-monotonic DatetimeIndexes
     #  with non-existing keys is deprecated and will raise a KeyError in a future Version.
-    df = df.loc[f"{year}-{month}-01":f"{year}-{month + 1}-01"]
+    df = df.loc[
+        f"{year}-{month}-01" : (
+            datetime(year=year, month=month, day=1) + relativedelta(months=1)
+        ).strftime("%Y-%m-%d")
+    ]
 
     if not df.empty:
 
-        # make another column that concatenates description and amount
+        # make another column that concatenates description and amount - this makes it easier
+        # to display a list of transactions and each amount after grouping by day
         df["acc"] = df["description"] + ACC_COL_DELIMITER + df["amount"].astype(str)
 
         # group all data by day
         data_groupby_day = df.resample("D")
 
-        # get each day's sum and add another column for normalized amount (for cell colouring)
+        # get each day's sum
         daily_amount_sum = data_groupby_day.amount.sum()
+
+        # add another column for normalized amount - for cell colouring
         normalized_daily_amount_sum = daily_amount_sum.apply(
             lambda x: -(x / daily_amount_sum.min())
             if x < 0
             else x / daily_amount_sum.max()
         )
 
-        # for each day, join all of the new columns data
+        # for each day, concatenate all of the 'acc' columns data for each day
         daily_transactions = data_groupby_day.acc.agg(
             lambda x: DAILY_TRANSACTIONS_DELIMITER.join(x)
         )
 
+        # concatenate all series into a single dataframe
         df = pd.concat(
             [daily_amount_sum, daily_transactions, normalized_daily_amount_sum], axis=1
         )
@@ -88,19 +95,19 @@ async def calendar(request: Request, year: int, month: int):
 async def upload(
     request: Request, file: UploadFile = File(...), redirect: Optional[str] = None
 ):
-
+    # always save the data and invalidate cache
     data = await file.read()
-    handle_save(data)
-
+    await save_data(data)
     get_data.cache_clear()
 
-    # sample the data to get a month and year
-    _, month, year = data.decode("utf-8")[:15].split(",")[0].split("/")
+    # if theres no redirect url, sample a bit of the data to get the first month and year
+    if not redirect:
+        _, month, year = data.decode("utf-8")[:15].split(",")[0].split("/")
 
-    # remove trailing '0' (not great but it'll do)
-    if "0" in month and month != "10":
-        month = month[1:]
+        # remove trailing '0'
+        if "0" in month and month != "10":
+            month = month[1:]
 
-    return RedirectResponse(
-        url=f"/calendar/year/{year}/month/{month}", status_code=HTTP_302_FOUND
-    )
+        redirect = f"/calendar/year/{year}/month/{month}"
+
+    return RedirectResponse(url=redirect, status_code=HTTP_302_FOUND)

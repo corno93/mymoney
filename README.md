@@ -4,12 +4,12 @@ I have a spending problem.
 
 This website does not solve it however it makes allows me to see it better.
 
-This website displays a calendar with the total amount of money spent on each day. Hovering over each day will
-display the transactions.
-In order to input data there is a form that will accept Commonwealth bank csvs. 
+## What it does
+- Uploads Commonwealth bank transactions csv's. You can easily download them from clicking one of your accounts. 
+- Displays a calendar with the total amount of money spent on each day. 
+- Lists transactions when hovering over day
 
-Its a lean FastAPI project with no database.
-Styling has been kept minimal since whos got time for that...
+## What is looks like
 
 ## Quick start
 
