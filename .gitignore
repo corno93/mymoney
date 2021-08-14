@@ -1,5 +1,4 @@
 *.csv
 .idea
-*.html
 __pycache__/
 data

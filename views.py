@@ -1,5 +1,5 @@
-from functools import wraps, lru_cache
-from timeit import default_timer
+from functools import lru_cache
+from typing import Optional
 
 import pandas as pd
 from fastapi import APIRouter, File, Request, UploadFile
@@ -9,7 +9,6 @@ from starlette.status import HTTP_302_FOUND
 from constants import ACC_COL_DELIMITER, DAILY_TRANSACTIONS_DELIMITER, DATA_FILE
 from spend_calendar import SpendCalendar
 from templates import templates
-from typing import Optional
 
 router = APIRouter()
 
@@ -40,6 +39,13 @@ def get_data():
         dayfirst=True,
         index_col="date",
     )
+
+
+@router.get("/calendar/year/{year}/month/{month}", response_class=HTMLResponse)
+async def calendar(request: Request, year: int, month: int):
+
+    df = get_data()
+
     # FIXME: FutureWarning: Value based partial slicing on non-monotonic DatetimeIndexes
     #  with non-existing keys is deprecated and will raise a KeyError in a future Version.
     df = df.loc[f"{year}-{month}-01":f"{year}-{month + 1}-01"]
@@ -79,7 +85,9 @@ def get_data():
 
 
 @router.post("/upload", response_class=RedirectResponse)
-async def upload(request: Request, file: UploadFile = File(...), redirect: Optional[str] = None):
+async def upload(
+    request: Request, file: UploadFile = File(...), redirect: Optional[str] = None
+):
 
     data = await file.read()
     handle_save(data)
