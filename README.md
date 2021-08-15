@@ -10,6 +10,8 @@ This website does not solve it however it makes allows me to see it better.
 - Lists transactions when hovering over day
 
 ## What is looks like
+![mymoney_example_image](https://user-images.githubusercontent.com/22492590/129470482-e840cc19-e813-4aec-bff3-b92241ed1f49.png)
+
 
 ## Quick start
 
