@@ -5,11 +5,11 @@ I have a spending problem.
 This website does not solve it however it makes allows me to see it better.
 
 ## What it does
-- Uploads Commonwealth bank transactions csv's. You can easily download them from clicking one of your accounts. 
+- Uploads Commonwealth bank transactions csv's. You can easily download them from clicking one of your accounts and specifying a data range.
 - Displays a calendar with the total amount of money spent on each day. 
-- Lists transactions when hovering over day
+- Lists transactions when hovering over day.
 
-## What is looks like
+## What it looks like
 ![mymoney_example_image](https://user-images.githubusercontent.com/22492590/129470482-e840cc19-e813-4aec-bff3-b92241ed1f49.png)
 
 
