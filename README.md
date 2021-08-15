@@ -29,9 +29,6 @@ poetry install
 uvicorn main:app
 ```
 
-## What it looks like
-
-
 ## Possible features
 I feel you can get very creative with this data
 - Bank transaction classification. This will allow a display of the percentage of money spent in 
